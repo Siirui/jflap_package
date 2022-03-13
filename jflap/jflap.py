@@ -1,9 +1,10 @@
 import os.path
 
 class state(object):
-    def __init__(self, name, label="", initial=False, final=False):
+    def __init__(self, name, id, label="", initial=False, final=False):
         self.name = name
         self.label = label
+        self.id = id
         self.initial = False
         self.final = False
     def set_name(self, name):
@@ -11,15 +12,18 @@ class state(object):
     def set_label(self, label=""):
         self.label = label
     def set_initial(self, initial=False):
-        set.initial = initial
+        self.initial = initial
     def set_final(self, final=False):
-        set.final = final
+        self.final = final
+    def set_id(self, id):
+        self.id = id
 
 class Jflap(object):
     def __init__(self, file_name):
         self.file_name = file_name + ".jff"
-        self.states = []
-        self.sigma = []
+        self.states = {}
+        self.sigma = set()
+        self.max_id = 0
     def create_file(self, path):
         with open(os.path.join(path, self.file_name), mode="w", encoding="utf-8") as w:
             #print(os.path.join(path, self.file_name))
@@ -34,9 +38,19 @@ class Jflap(object):
             #print(content)
             os.chdir(path)
             w.write(content)
+
     def add_state(self, name, label="", initial=False, final=False):
-        new_state = state(name, label, initial, final)
-        self.states.append(new_state)
+        id = -1 #represent has no id
+        for i in range(0, self.max_id):
+            if i not in self.states:
+                id = i
+                break
+        if id == -1:
+            id = self.max_id
+            self.max_id += 1
+        new_state = state(name, id, label, initial, final)
+        self.states[new_state.id]=new_state
+
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
             #print(lines)
@@ -45,23 +59,32 @@ class Jflap(object):
             for line in lines:
                 if "<!--The list of states.-->" in line: #append new state
                     #print("This is target line:\n" + line)
-                    new_line = line + "\t\t<state id=\"" + str(len(self.states)-1) + "\" name=\"" + name + "\">&#13;"
+                    new_line = line + "\t\t<state id=\"" + str(id) + "\" name=\"" + str(name) + "\">&#13;"
                     new_line = new_line + "\n\t\t\t<x>0.0</x>&#13;"
                     new_line = new_line + "\n\t\t\t<y>0.0</y>&#13;"
                     new_line = new_line + "\n\t\t\t<label>" + label + "</label>&#13;"
                     if initial is True:
                         new_line = new_line + "\n\t\t\t<initial/>&#13;"
+                    else:
+                        new_line = new_line + "\n"
                     if final is True:
                         new_line = new_line + "\n\t\t\t<final/>&#13;"
+                    else:
+                        new_line = new_line + "\n"
                     new_line = new_line + "\n\t\t</state>&#13;\n"
                     w.writelines(new_line)
                 else:
                     #print("This is normal line:\n" + line)
                     w.write(line)
+
+    def create_sigma(self, symbols):
+        for symbol in symbols:
+            self.sigma.add(symbol)
+
     def add_transition(self, from_id, to_id, symbol):
         if symbol != "\sigma":
             if symbol not in self.sigma:
-                self.sigma.append(symbol)
+                self.sigma.add(symbol)
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
             #print(lines)
@@ -79,35 +102,180 @@ class Jflap(object):
                         w.write(new_line)
                     else:
                         new_line = line
+                        notation = "<!--This is sigma transition.-->"
                         for sym in self.sigma:
                             new_line = new_line + "\t\t<transition>&#13;"
-                            new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;"
-                            new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;"
-                            new_line = new_line + "\n\t\t\t<read>" + str(sym) + "</read>&#13;"
-                            new_line = new_line + "\n\t\t</transition>&#13;\n"
+                            new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;" + notation
+                            new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;" + notation
+                            new_line = new_line + "\n\t\t\t<read>" + str(sym) + "</read>&#13;" + notation
+                            new_line = new_line + "\n\t\t</transition>&#13;" + notation + "\n"
                         w.write(new_line)
                 else:
                     w.write(line)
+
+    def del_state(self, id):
+        if id not in self.states:
+            return
+        else:
+            self.states.pop(id)
+        with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+            lines = r.readlines()
+        with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+            i = 0
+            target_line_state = "<state id=\"" + str(id) + "\""
+            target_line_from = "\t\t\t<from>" + str(id) + "</from>"
+            target_line_to = "\t\t\t<to>" + str(id) + "</to>"
+            while i < len(lines):
+                if target_line_state in lines[i]:
+                    i += 6
+                elif i + 1 < len(lines) and target_line_from in lines[i + 1]:
+                    i += 4
+                elif i + 2 < len(lines) and target_line_to in lines[i + 2]:
+                    i += 4
+                else:
+                    w.write(lines[i])
+                i += 1
+
+    def del_transition(self, from_id, to_id, pre_symbol):
+        if from_id not in self.states or to_id not in self.states:
+            return
+        with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+            lines = r.readlines()
+        with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+            i = 0
+            target_line_from = "\t\t\t<from>" + str(from_id) + "</from>"
+            target_line_to = "\t\t\t<to>" + str(to_id) + "</to>"
+            target_line_symbol = "\t\t\t<read>" + str(pre_symbol) + "</read>"
+            notation = "<!--This is sigma transition.-->"
+            while i < len(lines):
+                if pre_symbol != '\sigma' and notation not in lines[i]:
+                    if i + 3 < len(lines) and target_line_from in lines[i + 1] and target_line_to in lines[i + 2] and target_line_symbol in lines[i + 3]:
+                        i += 4
+                    else:
+                        w.write(lines[i])
+                elif pre_symbol == '\sigma' and i + 1 < len(lines) and notation in lines[i + 1]:
+                    if i + 3 < len(lines) and target_line_from in lines[i + 1] and target_line_to in lines[i + 2]:
+                        i += 4
+                    else:
+                        w.write(lines[i])
+                else:
+                    w.write(lines[i])
+                i += 1
+
+
     def change_state(self, id, initial=-1, final=-1):
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
-            # print(lines)
         target_line = "<state id=\"" + str(id) + "\""
         with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
-            for i in range(len(lines)):
+            i = 0
+            while i < len(lines):
                 line = lines[i]
+                #print(line)
                 if target_line in line:  # modify the state
-                    new_line =
+                    if initial is True:
+                        lines[i + 4] = "\t\t\t<initial/>&#13;"
+                    elif initial is False:
+                        lines[i + 4] = "\n"
+                    if final is True:
+                        lines[i + 5] = "\t\t\t<final/>&#13;"
+                    elif final is False:
+                        lines[i + 5] = "\n"
+                    for j in range(0, 7):
+                        w.write(lines[i])
+                        i += 1
+                else:
+                    w.write(line)
+                    #print(line)
+                    i += 1
 
+    def change_state_name(self, id, name=""):
+        with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+            lines = r.readlines()
+        target_line = "<state id=\"" + str(id) + "\""
+        with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                if target_line in line:  # modify the name of the state
+                    line = "\t\t<state id=\"" + str(id) + "\" name=\"" + name + "\">&#13;\n"
+                    w.write(line)
+                else:
+                    w.write(line)
+                i += 1
 
+    def change_state_label(self, id, label=""):
+        with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+            lines = r.readlines()
+        target_line = "<state id=\"" + str(id) + "\""
+        with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                if target_line in line:  # modify the name of the state
+                    lines[i + 3] = "\n\t\t\t<label>" + label + "</label>&#13;\n"
+                    for j in range(0, 7):
+                        w.write(lines[i])
+                        i += 1
+                else:
+                    w.write(line)
+                    #print(line)
+                    i += 1
+
+    def change_transition(self, from_id, to_id, pre_symbol, new_symbol): # realize delete first
+        '''with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+            lines = r.readlines()
+        with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+            target_line_from = "\t\t\t<from>" + str(from_id) + "</from>"
+            target_line_to = "\t\t\t<to>" + str(to_id) + "</to>"
+            target_line_symbol = "\t\t\t<read>" + str(pre_symbol) + "</read>"
+            i = 2
+            while i < len(lines):
+                if target_line_from in lines[i - 2] and target_line_to in lines[i - 1] and target_line_symbol in lines[i]:
+                    lines[i] = "\t\t\t<read>" + str(new_symbol) + "</read>&#13;\n"
+                w.write(lines[i])
+                i += 1
+        '''
+        self.del_transition(from_id, to_id, pre_symbol)
+        self.add_transition(from_id, to_id, new_symbol)
+
+'''
 test = Jflap("test")
 test.create_file(os.getcwd())
 test.add_state("q0","0,0", initial=True)
 test.add_state("q1","1,2", final=True)
+test.add_state("q2", "ready to be deleted", final=True, initial=True)
+test.create_sigma(['0', '1', '2', '3'])
 test.add_transition(0, 1, '0')
-test.add_transition(0, 1, '2')
+test.add_transition(1, 0, '2')
 test.add_transition(0, 1, '1')
-test.add_transition(1, 0, "\sigma")
+test.add_transition(1, 2, "\sigma")
+#test.add_transition(1, 0, "\sigma")
 
+test.change_state(0, initial=False)
+test.change_state(1, final=False)
+
+test.change_state_name(0, "Zero")
+
+test.change_state_label(1, "I am state 1")
+#test.del_state(2)
+test.change_transition(0, 1, '0', '3')
+#test.change_transition(1, 0, "2", '\sigma')
+#test.del_transition(1, 0, '\sigma')
 #print (test.file_name)
+'''
+
+test = Jflap("test")
+test.create_file(os.getcwd())
+for i in range(0, 12):
+    test.add_state(name = i)
+test.change_state(0, initial=True)
+test.change_state(11, final=True)
+sigma = range(0, 10)
+test.create_sigma(sigma)
+for i in range (1, 11):
+    test.add_transition(0, i, i)
+    test.add_transition(i, i, "\sigma")
+    test.add_transition(i, 11, i)
+
 
