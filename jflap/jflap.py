@@ -1,5 +1,10 @@
 import os.path
 
+NOT_FIND_NAME = -1
+MULTI_NAME = -2
+NOT_FIND_ID = -3
+REMAINED = -1
+
 class state(object):
     def __init__(self, name, id, label="", initial=False, final=False):
         self.name = name
@@ -38,6 +43,15 @@ class Jflap(object):
             #print(content)
             os.chdir(path)
             w.write(content)
+
+    def name_to_id(self, name):
+        id = -1
+        for state in self.states:
+            if state.name == name and id != -1:
+                id = state.id
+            elif state.name == name and id == -1:
+                return MULTI_NAME
+        return NOT_FIND_NAME
 
     def add_state(self, name, label="", initial=False, final=False):
         id = -1 #represent has no id
@@ -82,6 +96,13 @@ class Jflap(object):
             self.sigma.add(symbol)
 
     def add_transition(self, from_id, to_id, symbol):
+        if from_id not in self.states:
+            print("There is not id=%d in states", from_id)
+            return
+        if to_id not in self.states:
+            print("There is not id=%d in states", to_id)
+            return
+
         if symbol != "\sigma":
             if symbol not in self.sigma:
                 self.sigma.add(symbol)
@@ -113,8 +134,27 @@ class Jflap(object):
                 else:
                     w.write(line)
 
+    def add_transition_by_name(self, from_name, to_name, symbol):
+        from_id = self.name_to_id(from_name)
+        if from_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", from_name)
+            return
+        elif from_id == MULTI_NAME:
+            print("There are multiple %c in states", from_name)
+            return
+
+        to_id = self.name_to_id(to_name)
+        if to_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", to_name)
+            return
+        elif to_id == MULTI_NAME:
+            print("There are multiple %c in states", to_name)
+            return
+        self.add_transition(from_id, to_id, symbol)
+
     def del_state(self, id):
         if id not in self.states:
+            print("There is not id=%d in states", id)
             return
         else:
             self.states.pop(id)
@@ -136,7 +176,24 @@ class Jflap(object):
                     w.write(lines[i])
                 i += 1
 
+    def del_state_by_name(self, name):
+        id = self.name_to_id(name)
+        if id == NOT_FIND_NAME:
+            print ("Can't find %c in states!", name)
+            return
+        elif id == MULTI_NAME:
+            print("There are multiple %c in states", name)
+            return
+        self.del_state(id)
+
     def del_transition(self, from_id, to_id, pre_symbol):
+        if from_id not in self.states:
+            print("There is not id=%d in states", from_id)
+            return
+        if to_id not in self.states:
+            print("There is not id=%d in states", to_id)
+            return
+
         if from_id not in self.states or to_id not in self.states:
             return
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
@@ -162,8 +219,30 @@ class Jflap(object):
                     w.write(lines[i])
                 i += 1
 
+    def del_transition_by_name(self, from_name, to_name, pre_symbol):
+        from_id = self.name_to_id(from_name)
+        if from_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", from_name)
+            return
+        elif from_id == MULTI_NAME:
+            print("There are multiple %c in states", from_name)
+            return
 
-    def change_state(self, id, initial=-1, final=-1):
+        to_id = self.name_to_id(to_name)
+        if to_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", to_name)
+            return
+        elif to_id == MULTI_NAME:
+            print("There are multiple %c in states", to_name)
+            return
+
+        self.del_transition(from_id, to_id, pre_symbol)
+
+    def change_state(self, id, initial=REMAINED, final=REMAINED):
+        if id not in self.states:
+            print("There is not id=%d in states", id)
+            return
+
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
         target_line = "<state id=\"" + str(id) + "\""
@@ -189,7 +268,22 @@ class Jflap(object):
                     #print(line)
                     i += 1
 
+    def change_state_by_name(self, name, initial=REMAINED, final=REMAINED):
+        id = self.name_to_id(name)
+        if id == NOT_FIND_NAME:
+            print("Can't find %c in states!", name)
+            return
+        elif id == MULTI_NAME:
+            print("There are multiple %c in states", name)
+            return
+
+        self.change_state(id, initial, final)
+
     def change_state_name(self, id, name=""):
+        if id not in self.states:
+            print("There is not id=%d in states", id)
+            return
+
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
         target_line = "<state id=\"" + str(id) + "\""
@@ -204,7 +298,22 @@ class Jflap(object):
                     w.write(line)
                 i += 1
 
+    def change_state_name_by_name(self, pre_name, new_name):
+        id = self.name_to_id(pre_name)
+        if id == NOT_FIND_NAME:
+            print("Can't find %c in states!", pre_name)
+            return
+        elif id == MULTI_NAME:
+            print("There are multiple %c in states", pre_name)
+            return
+
+        self.change_state_name(id, new_name)
+
     def change_state_label(self, id, label=""):
+        if id not in self.states:
+            print("There is not id=%d in states", id)
+            return
+
         with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
             lines = r.readlines()
         target_line = "<state id=\"" + str(id) + "\""
@@ -221,6 +330,17 @@ class Jflap(object):
                     w.write(line)
                     #print(line)
                     i += 1
+
+    def change_state_label_by_name(self, name, label=""):
+        id = self.name_to_id(name)
+        if id == NOT_FIND_NAME:
+            print("Can't find %c in states!", name)
+            return
+        elif id == MULTI_NAME:
+            print("There are multiple %c in states", name)
+            return
+
+        self.change_state_label(id, label)
 
     def change_transition(self, from_id, to_id, pre_symbol, new_symbol): # realize delete first
         '''with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
@@ -239,6 +359,24 @@ class Jflap(object):
         self.del_transition(from_id, to_id, pre_symbol)
         self.add_transition(from_id, to_id, new_symbol)
 
+    def change_transition_by_name(self, from_name, to_name, pre_symbol, new_symbol):
+        from_id = self.name_to_id(from_name)
+        if from_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", from_name)
+            return
+        elif from_id == MULTI_NAME:
+            print("There are multiple %c in states", from_name)
+            return
+
+        to_id = self.name_to_id(to_name)
+        if to_id == NOT_FIND_NAME:
+            print("Can't find %c in states!", to_name)
+            return
+        elif to_id == MULTI_NAME:
+            print("There are multiple %c in states", to_name)
+            return
+
+        self.change_transition(from_id, to_id, pre_symbol, new_symbol)
 '''
 test = Jflap("test")
 test.create_file(os.getcwd())
