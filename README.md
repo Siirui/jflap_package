@@ -121,5 +121,5 @@ test.change_transition(0, 1, pre_symbols=[], new_symbols=['3', '4'], all=True)
 help(test.add_transition)
 ```
 
-![test.png](.\image\test.png)
+![test.png](https://github.com/carmen-zhy/job/raw/master/image/test.png)
 
