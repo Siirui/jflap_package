@@ -71,7 +71,6 @@ class Jflap(object):
         states named with param_name then return NOT_FIND_NAME; If there is multiple states' names same then return MULTI_NAME
         """
         id = NOT_DETERMINED
-        idx = 0
         for idx in self.states:
             # print(self.states[idx].name, name)
             if self.states[idx].name == name and id == NOT_DETERMINED:
@@ -101,7 +100,7 @@ class Jflap(object):
             id = self.max_id
             self.max_id += 1
         new_state = State(name, id, label, initial, final)
-        print("state %d with name %s" %(id, name))
+        # print("state %d with name %s" % (id, name))
         self.states[new_state.id] = new_state
         try:
             with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
@@ -147,12 +146,12 @@ class Jflap(object):
             self.sigma.add(symbol)
         print("Successfully build the alphabet!")
 
-    def add_transition(self, from_id, to_id, symbol):
+    def add_transition(self, from_id, to_id, symbols):
         """
         Add a transition from start state to end state with symbol.
         :param from_id: The id of the start state
         :param to_id: The id of  the end state
-        :param symbol: The symbol of this transition
+        :param symbols: The symbols of this transition
         :return: NULL
         """
         if from_id not in self.states:
@@ -161,52 +160,52 @@ class Jflap(object):
         if to_id not in self.states:
             print("There is no id=%d in states" % to_id)
             return
-
-        if symbol != "/sigma":
-            if symbol not in self.sigma:
-                self.sigma.add(symbol)
-        try:
-            with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
-                lines = r.readlines()
-                # print(lines)
-        except IOError:
-            print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
-        try:
-            with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
-                # print(lines)
-                for line in lines:
-                    if "<!--The list of transitions.-->" in line:  # add new transition
-                        new_line = line
-                        if symbol != "/sigma":
-                            new_line = new_line + "\t\t<transition>&#13;"
-                            new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;"
-                            new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;"
-                            new_line = new_line + "\n\t\t\t<read>" + str(symbol) + "</read>&#13;"
-                            new_line = new_line + "\n\t\t</transition>&#13;\n"
-                            w.write(new_line)
-                        else:
+        for symbol in symbols:
+            if symbol != "/sigma":
+                if symbol not in self.sigma:
+                    self.sigma.add(symbol)
+            try:
+                with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+                    lines = r.readlines()
+                    # print(lines)
+            except IOError:
+                print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
+            try:
+                with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+                    # print(lines)
+                    for line in lines:
+                        if "<!--The list of transitions.-->" in line:  # add new transition
                             new_line = line
-                            notation = "<!--This is sigma transition.-->"
-                            for sym in self.sigma:
+                            if symbol != "/sigma":
                                 new_line = new_line + "\t\t<transition>&#13;"
-                                new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;" + notation
-                                new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;" + notation
-                                new_line = new_line + "\n\t\t\t<read>" + str(sym) + "</read>&#13;" + notation
-                                new_line = new_line + "\n\t\t</transition>&#13;" + notation + "\n"
-                            w.write(new_line)
-                    else:
-                        w.write(line)
-        except IOError:
-            print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
+                                new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;"
+                                new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;"
+                                new_line = new_line + "\n\t\t\t<read>" + str(symbol) + "</read>&#13;"
+                                new_line = new_line + "\n\t\t</transition>&#13;\n"
+                                w.write(new_line)
+                            else:
+                                new_line = line
+                                notation = "<!--This is sigma transition.-->"
+                                for sym in self.sigma:
+                                    new_line = new_line + "\t\t<transition>&#13;"
+                                    new_line = new_line + "\n\t\t\t<from>" + str(from_id) + "</from>&#13;" + notation
+                                    new_line = new_line + "\n\t\t\t<to>" + str(to_id) + "</to>&#13;" + notation
+                                    new_line = new_line + "\n\t\t\t<read>" + str(sym) + "</read>&#13;" + notation
+                                    new_line = new_line + "\n\t\t</transition>&#13;" + notation + "\n"
+                                w.write(new_line)
+                        else:
+                            w.write(line)
+            except IOError:
+                print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
 
-        print("Successfully add a transition from %s to %s with symbol %s" % (self.states[from_id].name, self.states[to_id].name, symbol))
+            print("Successfully add a transition from %s to %s with symbol %s" % (self.states[from_id].name, self.states[to_id].name, symbol))
 
-    def add_transition_by_name(self, from_name, to_name, symbol):
+    def add_transition_by_name(self, from_name, to_name, symbols):
         """
         Add transition from start state to end state with symbol by using name to index
         :param from_name: The name of start state
         :param to_name: The name of end state
-        :param symbol: The symbol of this transition
+        :param symbols: The symbols of this transition
         :return:NULL
         """
 
@@ -227,7 +226,7 @@ class Jflap(object):
             return
 
         # print("!!!",from_id, to_id)
-        self.add_transition(from_id, to_id, symbol)
+        self.add_transition(from_id, to_id, symbols)
 
     def del_state(self, id):
         """
@@ -282,12 +281,13 @@ class Jflap(object):
             return
         self.del_state(id)
 
-    def del_transition(self, from_id, to_id, pre_symbol):
+    def del_transition(self, from_id, to_id, pre_symbols, all=False):
         """
         Delete the transition from start state to end state with pre_symbol.
+        :param all: If all is True, then delete all the transition from start state to end state.
         :param from_id: The id of the start state.
         :param to_id: The id of the end state.
-        :param pre_symbol: The symbol of this transition.
+        :param pre_symbols: The symbols of this transition.
         :return: NULL
         """
         if from_id not in self.states:
@@ -299,43 +299,60 @@ class Jflap(object):
 
         if from_id not in self.states or to_id not in self.states:
             return
-        try:
-            with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
-                lines = r.readlines()
-        except IOError:
-            print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
+        idx_symbol = 0
+        while idx_symbol < len(pre_symbols) or all is True:
+            pre_symbol = ""
+            if (idx_symbol < len(pre_symbols)):
+                pre_symbol = pre_symbols[idx_symbol]
+                idx_symbol += 1
+            try:
+                with open(os.path.join(os.getcwd(), self.file_name), mode="r+", encoding="utf-8") as r:
+                    lines = r.readlines()
+            except IOError:
+                print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
 
-        try:
-            with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
-                idx = 0
-                target_line_from = "\t\t\t<from>" + str(from_id) + "</from>"
-                target_line_to = "\t\t\t<to>" + str(to_id) + "</to>"
-                target_line_symbol = "\t\t\t<read>" + str(pre_symbol) + "</read>"
-                notation = "<!--This is sigma transition.-->"
-                while idx < len(lines):
-                    if pre_symbol != '/sigma' and notation not in lines[idx]:
-                        if idx + 3 < len(lines) and target_line_from in lines[idx + 1] and target_line_to in lines[idx + 2] and target_line_symbol in lines[idx + 3]:
-                            idx += 4
+            try:
+                with open(os.path.join(os.getcwd(), self.file_name), mode="w", encoding="utf-8") as w:
+                    idx = 0
+                    target_line_from = "\t\t\t<from>" + str(from_id) + "</from>"
+                    target_line_to = "\t\t\t<to>" + str(to_id) + "</to>"
+                    target_line_symbol = "\t\t\t<read>" + str(pre_symbol) + "</read>"
+                    notation = "<!--This is sigma transition.-->"
+                    while idx < len(lines):
+                        if all is True:
+                            if idx + 2 < len(lines) and target_line_from in lines[idx + 1] and target_line_to in lines[idx + 2]:
+                                idx += 4
+                            else:
+                                w.write(lines[idx])
+                        elif pre_symbol != '/sigma' and notation not in lines[idx]:
+                            if idx + 3 < len(lines) and target_line_from in lines[idx + 1] and target_line_to in lines[idx + 2] and target_line_symbol in lines[idx + 3]:
+                                idx += 4
+                            else:
+                                w.write(lines[idx])
+                        elif pre_symbol == '/sigma' and idx + 1 < len(lines) and notation in lines[idx + 1]:
+                            if idx + 3 < len(lines) and target_line_from in lines[idx + 1] and target_line_to in lines[idx + 2]:
+                                idx += 4
+                            else:
+                                w.write(lines[idx])
                         else:
                             w.write(lines[idx])
-                    elif pre_symbol == '/sigma' and idx + 1 < len(lines) and notation in lines[idx + 1]:
-                        if idx + 3 < len(lines) and target_line_from in lines[idx + 1] and target_line_to in lines[idx + 2]:
-                            idx += 4
-                        else:
-                            w.write(lines[idx])
-                    else:
-                        w.write(lines[idx])
-                    idx += 1
-        except IOError:
-            print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
-        print("Successfully delete the transition from state %d to state %d with symbol %s" % (from_id, to_id, pre_symbol))
+                        idx += 1
+            except IOError:
+                print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
+            if all is True:
+                print("Successfully delete all the transitions from state %d to state %d" % (from_id, to_id))
+            else:
+                print("Successfully delete the transition from state %d to state %d with symbol %s" % (from_id, to_id, pre_symbol))
+            if all is True:
+                break
 
-    def del_transition_by_name(self, from_name, to_name, pre_symbol):
+    def del_transition_by_name(self, from_name, to_name, pre_symbols, all=False):
         """
         Delete the transition from start state to end state by using name to index.
+        :param all: If all is True, then delete all the transition from start state to end state.
         :param from_name: The name of start state.
         :param to_name: The name of end state.
-        :param pre_symbol: The symbol of this transition.
+        :param pre_symbols: The symbols of transitions.
         :return: NULL
         """
         from_id = self.name_to_id(from_name)
@@ -354,7 +371,7 @@ class Jflap(object):
             print("There are multiple %s in states" % to_name)
             return
 
-        self.del_transition(from_id, to_id, pre_symbol)
+        self.del_transition(from_id, to_id, pre_symbols, all)
 
     def change_state(self, id, initial=REMAINED, final=REMAINED):
         """
@@ -506,7 +523,7 @@ class Jflap(object):
                         idx += 1
         except IOError:
             print("Unsuccessfully open file %s" % (os.path.join(os.getcwd(), self.file_name)))
-        print("Successfully change the state %d's from label '%s' to label '%s'!" % (id, old_label, label))
+        print("Successfully change the state %d's label from \"%s\" to \"%s\" !" % (id, old_label, label))
 
     def change_state_label_by_name(self, name, label=""):
         """
@@ -525,13 +542,14 @@ class Jflap(object):
 
         self.change_state_label(id, label)
 
-    def change_transition(self, from_id, to_id, pre_symbol, new_symbol):  # realize delete first
+    def change_transition(self, from_id, to_id, pre_symbols, new_symbols, all=False):  # realize delete first
         """
         Change the transition from start state to end state with new symbol.
+        :param all: If all is True, then change all the transition from start state to end state.
         :param from_id: The id of start state.
         :param to_id: The id of end state.
-        :param pre_symbol: The old symbol of transition.
-        :param new_symbol: The new symbol of transition.
+        :param pre_symbols: The old symbols of transitions.
+        :param new_symbols: The new symbols of transitions.
         :return:
         """
 
@@ -548,17 +566,18 @@ class Jflap(object):
                 w.write(lines[i])
                 i += 1
         '''
-        self.del_transition(from_id, to_id, pre_symbol)
-        self.add_transition(from_id, to_id, new_symbol)
-        print("Successfully change the transition from state %d to state %d with symbol %s" % (from_id, to_id, new_symbol))
+        self.del_transition(from_id, to_id, pre_symbols, all)
+        self.add_transition(from_id, to_id, new_symbols)
+        print("Successfully change the transition from state %d to state %d with symbol %s" % (from_id, to_id, new_symbols))
 
-    def change_transition_by_name(self, from_name, to_name, pre_symbol, new_symbol):
+    def change_transition_by_name(self, from_name, to_name, pre_symbols, new_symbols, all=False):
         """
         CChange the transition from start state to end state with new symbol by using name to index.
+        :param all: If all is True, then delete all the transition from start state to end state.
         :param from_name: The name of start state.
         :param to_name: The name of end state.
-        :param pre_symbol: The old symbol of transition.
-        :param new_symbol: The new symbol of transition.
+        :param pre_symbols: The old symbols of transition.
+        :param new_symbols: The new symbols of transition.
         :return: NULL
         """
         from_id = self.name_to_id(from_name)
@@ -577,7 +596,7 @@ class Jflap(object):
             print("There are multiple %s in states" % to_name)
             return
 
-        self.change_transition(from_id, to_id, pre_symbol, new_symbol)
+        self.change_transition(from_id, to_id, pre_symbols, new_symbols, all)
 
 
 '''
@@ -586,21 +605,21 @@ test.create_file(os.getcwd())
 test.add_state("q0","0,0", initial=True)
 test.add_state("q1","1,2", final=True)
 test.add_state("q2", "ready to be deleted", final=True, initial=True)
-test.create_sigma(['0', '1', '2', '3'])
-test.add_transition(0, 1, '0')
-test.add_transition(1, 0, '2')
-test.add_transition(0, 1, '1')
-test.add_transition(1, 2, "/sigma")
+test.create_sigma(['0', '1', '2', '3', '4'])
+test.add_transition(0, 1, ['0'])
+test.add_transition(1, 0, ['2'])
+test.add_transition(0, 1, ['1'])
+test.add_transition(1, 2, ["/sigma"])
 #test.add_transition(1, 0, "/sigma")
 
 test.change_state(0, initial=False)
 test.change_state(1, final=False)
 
-test.change_state_name(0, "Zero")
-
 test.change_state_label(1, "I am state 1")
 #test.del_state(2)
-test.change_transition(0, 1, '0', '3')
+#test.change_transition(0, 1, '0', '3')
+#test.del_transition(0, 1, pre_symbols=[], all=True)
+test.change_transition(0, 1, pre_symbols=[], new_symbols=['3', '4'], all=True)
 #test.change_transition(1, 0, "2", '/sigma')
 #test.del_transition(1, 0, '/sigma')
 #print (test.file_name)
@@ -619,7 +638,8 @@ for i in range(1, 11):
     test.add_transition(0, i, i)
     test.add_transition(i, i, "/sigma")
     test.add_transition(i, 11, i)
-
+'''
+'''
 test = Jflap("2-14")
 test.create_file(os.getcwd())
 test.add_state("{q0}", initial=True)
@@ -633,4 +653,3 @@ test.add_transition_by_name("{q0}","{q0}", 1)
 test.add_transition_by_name("{q0,q2}","{q0}", 1)
 test.add_transition_by_name("{q0,q2}","{q0,q1}", 0)
 '''
-

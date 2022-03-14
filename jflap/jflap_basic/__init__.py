@@ -1,4 +1,6 @@
 import os
 import sys
-from jflap_basic.jflap import *
+from . import jflap
+from .jflap import *
+
 print("You have successfully import me!")
